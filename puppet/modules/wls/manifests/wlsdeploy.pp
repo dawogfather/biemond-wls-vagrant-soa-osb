@@ -79,6 +79,10 @@ define wls::wlsdeploy ($wlHome        = undef,
           $classpath = "${wlHome}/server/lib/weblogic.jar:${osbHome}/modules/com.bea.core.xml.xmlbeans_2.2.0.0_2-5-1.jar:${osbHome}/lib/alsb.jar:${osbHome}/lib/sb-kernel-wls.jar:${osbHome}/lib/sb-kernel-impl.jar:${osbHome}/lib/sb-kernel-api.jar:${osbHome}/modules/com.bea.common.configfwk_1.6.0.0.jar"
         }
 
+        elsif $deployType == 'osb1117' {
+          $classpath = "${wlHome}/server/lib/weblogic.jar:${osbHome}/../oracle_common/modules/com.bea.core.xml.xmlbeans_2.1.0.0_2-5-1.jar:${osbHome}/lib/alsb.jar:${osbHome}/lib/sb-kernel-wls.jar:${osbHome}/lib/sb-kernel-impl.jar:${osbHome}/lib/sb-kernel-api.jar:${osbHome}/modules/com.bea.common.configfwk_1.7.0.0.jar"
+        }
+
         else {
            fail("Unrecognized deployType choose weblogic or osb")
         }

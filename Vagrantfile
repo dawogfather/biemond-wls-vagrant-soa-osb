@@ -9,20 +9,21 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define "soaapp" , primary: true do |soaapp|
     soaapp.vm.box = "centos-6.5-x86_64"
     #soaapp.vm.box_url ="/Users/edwin/Downloads/centos-6.5-x86_64.box"
-    soaapp.vm.box_url = "https://dl.dropboxusercontent.com/s/np39xdpw05wfmv4/centos-6.5-x86_64.box"
+    soaapp.vm.box_url = "C:/TOM/Software/centos-6.5-x86_64.box"
 
     soaapp.vm.hostname = "soaapp.example.com"
 
     soaapp.vm.synced_folder "."                    , "/vagrant", :mount_options => ["dmode=777","fmode=777"]
-    soaapp.vm.synced_folder "/Users/edwin/software", "/software"
+    soaapp.vm.synced_folder "C:/TOM/Software", "/software"
     #soaapp.vm.synced_folder "."                    , "/vagrant" , type: "nfs"
     #soaapp.vm.synced_folder "/Users/edwin/software", "/software", type: "nfs"
 
-  
     soaapp.vm.network :private_network, ip: "10.10.10.10"
+
+    # soaapp.vm.network "forwarded_port", guest: 7001, host: 8889, auto_correct: true
   
     soaapp.vm.provider :virtualbox do |vb|
-      vb.customize ["modifyvm", :id, "--memory", "3500"]
+      vb.customize ["modifyvm", :id, "--memory", "4000"]
       vb.customize ["modifyvm", :id, "--name"  , "soaapp"]
     end
   
@@ -45,18 +46,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.define "soadb" , primary: true do |soadb|
     soadb.vm.box = "centos-6.5-x86_64"
-    soadb.vm.box_url = "https://dl.dropboxusercontent.com/s/np39xdpw05wfmv4/centos-6.5-x86_64.box"
+    soadb.vm.box_url = "C:/TOM/Software/centos-6.5-x86_64.box"
 
     soadb.vm.hostname = "soadb.example.com"
     soadb.vm.network :private_network, ip: "10.10.10.5"
-
+    
     soadb.vm.synced_folder ".", "/vagrant", :mount_options => ["dmode=777","fmode=777"]
-    soadb.vm.synced_folder "/Users/edwin/software", "/software"
+    soadb.vm.synced_folder "C:/TOM/Software", "/software"
     #soadb.vm.synced_folder ".", "/vagrant", type: "nfs"
     #soadb.vm.synced_folder "/Users/edwin/software", "/software", type: "nfs"
   
     soadb.vm.provider :virtualbox do |vb|
-      vb.customize ["modifyvm"     , :id, "--memory", "2000"]
+      vb.customize ["modifyvm"     , :id, "--memory", "3000"]
       vb.customize ["modifyvm"     , :id, "--name"  , "soadb"]
     end
 

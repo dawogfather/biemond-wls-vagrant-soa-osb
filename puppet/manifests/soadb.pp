@@ -37,9 +37,9 @@ class soadb_os {
                'sysstat.x86_64','unixODBC-devel','glibc.i686','libXext.i686','libXtst.i686']
        
 
-  package { $install:
-    ensure  => present,
-  }
+  # package { $install:
+  #   ensure  => present,
+  # }
 
   class { 'limits':
          config => {
