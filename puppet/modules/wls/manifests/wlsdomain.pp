@@ -164,6 +164,7 @@ if ( $continue ) {
 
 
    $templateOSB          = "${mdwHome}/Oracle_OSB1/common/templates/applications/wlsb.jar"
+   $templateOSBOWSM      = "${mdwHome}/Oracle_OSB1/common/templates/applications/wlsb_owsm.jar"
    $templateSOAAdapters  = "${mdwHome}/Oracle_OSB1/common/templates/applications/oracle.soa.common.adapters_template_11.1.1.jar"
 
    $templateSOA          = "${mdwHome}/Oracle_SOA1/common/templates/applications/oracle.soa_template_11.1.1.jar"

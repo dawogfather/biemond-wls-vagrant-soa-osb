@@ -90,7 +90,7 @@ define wls::wlsdeploy ($wlHome        = undef,
         Exec { path      => $execPath,
                user      => $user,
                group     => $group,
-               logoutput => false,
+               logoutput => true,
              }
         File {
                ensure  => present,

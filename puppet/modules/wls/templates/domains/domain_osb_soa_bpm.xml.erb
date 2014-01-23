@@ -301,6 +301,8 @@ setOption( "AppDir", APP_PATH )
 print('Extend...osb domain with template <%= @templateOSB %>')
 
 addTemplate('<%= @templateOSB %>')
+print('Extend...osb domain with OWSM Extension template <%= @templateOSBOWSM %>')
+addTemplate('<%= @templateOSBOWSM %>')
 
 dumpStack();
 updateDomain()
