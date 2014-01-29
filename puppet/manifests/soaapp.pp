@@ -10,12 +10,15 @@ node 'soaapp.example.com' {
    include wls1036
    include wls1036_domain
    include maintenance
+   include wls_application_JDBC_6
    
    Class['os']  -> 
      Class['ssh']  -> 
        Class['java']  -> 
          Class['wls1036'] -> 
-           Class['wls1036_domain']
+           Class['wls1036_domain'] -> 
+            Class['wls_application_JDBC_6'] 
+              # Class['wls_application_JMS_6']
 }  
 
 # operating settings for Middleware
@@ -392,6 +395,407 @@ class wls1036_domain{
   #     port          => $adminListenPort,
   #     require       => Wls::Wlscontrol['startSoaServer1'],
   # } 
+
+}
+
+class wls_application_JDBC_6{
+
+  $address         = hiera('domain_adminserver_address')
+  $adminListenPort = hiera('domain_adminserver_port')
+  $wlsDomainName   = hiera('domain_name')
+
+  $userConfigDir   = hiera('wls_user_config_dir')
+  $jdkWls11gJDK    = hiera('wls_jdk_version')
+                       
+  $osOracleHome = hiera('wls_oracle_base_home_dir')
+  $osMdwHome    = hiera('wls_middleware_home_dir')
+  $osWlHome     = hiera('wls_weblogic_home_dir')
+  $user         = hiera('wls_os_user')
+  $group        = hiera('wls_os_group')
+  $downloadDir  = hiera('wls_download_dir')
+  $logDir       = hiera('wls_log_dir')     
+
+  $userConfigFile = "${userConfigDir}/${user}-${wlsDomainName}-WebLogicConfig.properties"
+  $userKeyFile    = "${userConfigDir}/${user}-${wlsDomainName}-WebLogicKey.properties"
+
+  # default parameters for the wlst scripts
+  Wls::Wlstexec {
+    wlsDomain      => $wlsDomainName,
+    wlHome         => $osWlHome,
+    fullJDKName    => $jdkWls11gJDK,  
+    user           => $user,
+    group          => $group,
+    address        => $address,
+#    wlsUser        => "weblogic",
+#    password       => hiera('weblogic_password_default'),
+    userConfigFile => $userConfigFile,
+    userKeyFile    => $userKeyFile,
+    port           => $adminListenPort,
+    downloadDir    => $downloadDir, 
+  }
+
+  # create jdbc datasource for osb_server1 
+  wls::wlstexec { 
+  
+    'createJdbcDatasourceHr':
+     wlstype       => "jdbc",
+     wlsObjectName => "hrDS",
+     script        => 'createJdbcDatasource.py',
+     params        => ["dsName                      = 'hrDS'",
+                      "jdbcDatasourceTargets       = 'AdminServer,osb_server1'",
+                      "dsJNDIName                  = 'jdbc/hrDS'",
+                      "dsDriverName                = 'oracle.jdbc.xa.client.OracleXADataSource'",
+                      "dsURL                       = 'jdbc:oracle:thin:@soadb.example.com:1521/test.oracle.com'",
+                      "dsUserName                  = 'hr'",
+                      "dsPassword                  = 'hr'",
+                      "datasourceTargetType        = 'Server'",
+                      "globalTransactionsProtocol  = 'xxxx'"
+                      # "extraProperties             = 'oracle.net.CONNECT_TIMEOUT,SendStreamAsBlob'",
+                      # "extraPropertiesValues       = '10000,true'",
+                      ],
+  }
+
+  wls::resourceadapter{
+   'DbAdapter_hr':
+    wlHome               => $osWlHome,
+    fullJDKName          => $jdkWls11gJDK,
+    domain               => $wlsDomainName, 
+    adapterName          => 'DbAdapter' ,
+    adapterPath          => "${osMdwHome}/Oracle_SOA1/soa/connectors/DbAdapter.rar",
+    adapterPlanDir       => "${osMdwHome}/Oracle_SOA1/soa/connectors" ,
+    adapterPlan          => 'Plan_DB.xml' ,
+    adapterEntry         => 'eis/DB/hr',
+    adapterEntryProperty => 'xADataSourceName',
+    adapterEntryValue    => 'jdbc/hrDS',
+    address              => $address,
+    port                 => $adminListenPort,
+#    wlsUser             => "weblogic",
+#    password            => hiera('weblogic_password_default'),
+    userConfigFile       => $userConfigFile,
+    userKeyFile          => $userKeyFile,
+    user                 => $user,
+    group                => $group,
+    downloadDir          => $downloadDir,
+    require              => Wls::Wlstexec['createJdbcDatasourceHr'];
+  }                     
+
+  wls::resourceadapter{
+   'AqAdapter_hr':
+    wlHome               => $osWlHome,
+    fullJDKName          => $jdkWls11gJDK,
+    domain               => $wlsDomainName, 
+    adapterName          => 'AqAdapter' ,
+    adapterPath          => "${osMdwHome}/Oracle_SOA1/soa/connectors/AqAdapter.rar",
+    adapterPlanDir       => "${osMdwHome}/Oracle_SOA1/soa/connectors" ,
+    adapterPlan          => 'Plan_AQ.xml' ,
+    adapterEntry         => 'eis/AQ/hr',
+    adapterEntryProperty => 'xADataSourceName',
+    adapterEntryValue    => 'jdbc/hrDS',
+    address              => $address,
+    port                 => $adminListenPort,
+#    wlsUser            => "weblogic",
+#    password           => hiera('weblogic_password_default'),
+    userConfigFile       => $userConfigFile,
+    userKeyFile          => $userKeyFile,
+    user                 => $user,
+    group                => $group,
+    downloadDir          => $downloadDir,
+    require              => Wls::Resourceadapter['DbAdapter_hr'];
+  }
+
+
+}  
+
+class wls_application_JMS_6{
+
+
+  $jdkWls11gJDK  = hiera('wls_jdk_version')
+  $wlsDomainName   = hiera('domain_name')
+  $address         = hiera('domain_adminserver_address')
+  $adminListenPort = hiera('domain_adminserver_port')
+
+  $userConfigDir   = hiera('wls_user_config_dir')
+  $jdkWls11gJDK    = hiera('wls_jdk_version')
+                       
+  $osOracleHome = hiera('wls_oracle_base_home_dir')
+  $osMdwHome    = hiera('wls_middleware_home_dir')
+  $osWlHome     = hiera('wls_weblogic_home_dir')
+  $user         = hiera('wls_os_user')
+  $group        = hiera('wls_os_group')
+  $downloadDir  = hiera('wls_download_dir')
+  $logDir       = hiera('wls_log_dir')
+
+  $userConfigFile = "${userConfigDir}/${user}-${wlsDomainName}-WebLogicConfig.properties"
+  $userKeyFile    = "${userConfigDir}/${user}-${wlsDomainName}-WebLogicKey.properties"
+
+
+  # default parameters for the wlst scripts
+  Wls::Wlstexec {
+    wlsDomain      => $wlsDomainName,
+    wlHome         => $osWlHome,
+    fullJDKName    => $jdkWls11gJDK,  
+    user           => $user,
+    group          => $group,
+    address        => $address,
+#    wlsUser      => "weblogic",
+#    password     => hiera('weblogic_password_default'),
+    userConfigFile => $userConfigFile,
+    userKeyFile    => $userKeyFile,
+    port           => $adminListenPort,
+    downloadDir    => $downloadDir, 
+  }
+
+  # create jdbc jms datasource for jms server 
+  wls::wlstexec { 
+    'createJdbcDatasourceJms':
+     wlstype       => "jdbc",
+     wlsObjectName => "jmsDS",
+     script        => 'createJdbcDatasource.py',
+     params        => ["dsName                      = 'jmsDS'",
+                      "jdbcDatasourceTargets       = 'AdminServer,osb_server1'",
+                      "dsJNDIName                  = 'jdbc/jmsDS'",
+                      "dsDriverName                = 'oracle.jdbc.OracleDriver'",
+                      "dsURL                       = 'jdbc:oracle:thin:@dbagent2.alfa.local:1521/test.oracle.com'",
+                      "dsUserName                  = 'jms'",
+                      "dsPassword                  = 'jms'",
+                      "datasourceTargetType        = 'Server'",
+                      "globalTransactionsProtocol  = 'None'"
+                      ],
+  }
+
+  # create jdbc persistence store for jmsmodule 
+  wls::wlstexec { 
+    'createJdbcPersistenceStoreOSBServer':
+     wlstype       => "jdbcstore",
+     wlsObjectName => "jmsModuleJdbcPersistence",
+     script        => 'createJdbcPersistenceStore.py',
+     params        => ["jdbcStoreName = 'jmsModuleJdbcPersistence'",
+                      "serverTarget  = 'osb_server1'",
+                      "prefix        = 'jms1'",
+                      "datasource    = 'jmsDS'"
+                      ],
+     require     => Wls::Wlstexec['createJdbcDatasourceJms'];
+  }
+
+  # create file persistence store for osb_server1 
+  wls::wlstexec { 
+    'createFilePersistenceStoreOSBServer':
+     wlstype       => "filestore",
+     wlsObjectName => "jmsModuleFilePersistence",
+     script        => 'createFilePersistenceStore.py',
+     params        =>  ["fileStoreName = 'jmsModuleFilePersistence'",
+                      "serverTarget  = 'osb_server1'"],
+     require       => Wls::Wlstexec['createJdbcPersistenceStoreOSBServer'];
+  }
+  
+  # create jms server for osb_server1 
+  wls::wlstexec { 
+    'createJmsServerOSBServer':
+     wlstype       => "jmsserver",
+     wlsObjectName => "jmsServer",
+     script      => 'createJmsServer.py',
+     params      =>  ["storeName      = 'jmsModuleFilePersistence'",
+                      "serverTarget   = 'osb_server1'",
+                      "jmsServerName  = 'jmsServer'",
+                      "storeType      = 'file'",
+                      ],
+     require     => Wls::Wlstexec['createFilePersistenceStoreOSBServer'];
+  }
+
+  # create jms server for osb_server1 
+  wls::wlstexec { 
+    'createJmsServerOSBServer2':
+     wlstype       => "jmsserver",
+     wlsObjectName => "jmsServer2",
+     script      => 'createJmsServer.py',
+     port        => $adminServerPort,
+     params      =>  ["storeName      = 'jmsModuleJdbcPersistence'",
+                      "serverTarget   = 'osb_server1'",
+                      "jmsServerName  = 'jmsServer2'",
+                      "storeType      = 'jdbc'",
+                      ],
+     require     => Wls::Wlstexec['createJmsServerOSBServer'];
+  }
+
+  # create jms module for osb_server1 
+  wls::wlstexec { 
+    'createJmsModuleOSBServer':
+     wlstype       => "jmsmodule",
+     wlsObjectName => "jmsModule",
+     script        => 'createJmsModule.py',
+     params        =>  ["target         = 'osb_server1'",
+                        "jmsModuleName  = 'jmsModule'",
+                        "targetType     = 'Server'",
+                       ],
+     require       => Wls::Wlstexec['createJmsServerOSBServer2'];
+  }
+
+
+  # create jms subdeployment for jms module 
+  wls::wlstexec { 
+    'createJmsSubDeploymentWLSforJmsModule':
+     wlstype       => "jmssubdeployment",
+     wlsObjectName => "jmsModule/wlsServer",
+     script        => 'createJmsSubDeployment.py',
+     params        => ["target         = 'osb_server1'",
+                       "jmsModuleName  = 'jmsModule'",
+                       "subName        = 'wlsServer'",
+                       "targetType     = 'Server'"
+                      ],
+     require       => Wls::Wlstexec['createJmsModuleOSBServer'];
+ }
+
+
+  # create jms subdeployment for jms module 
+  wls::wlstexec { 
+    'createJmsSubDeploymentWLSforJmsModule2':
+     wlstype       => "jmssubdeployment",
+     wlsObjectName => "jmsModule/JmsServer",
+     script        => 'createJmsSubDeployment.py',
+     params        => ["target         = 'jmsServer'",
+                       "jmsModuleName  = 'jmsModule'",
+                       "subName        = 'JmsServer'",
+                       "targetType     = 'JMSServer'"
+                      ],
+     require     => Wls::Wlstexec['createJmsSubDeploymentWLSforJmsModule'];
+  }
+
+  # create jms connection factory for jms module 
+  wls::wlstexec { 
+  
+    'createJmsConnectionFactoryforJmsModule':
+     wlstype       => "jmsobject",
+     wlsObjectName => "cf",
+     script        => 'createJmsConnectionFactory.py',
+     params        => ["subDeploymentName = 'wlsServer'",
+                      "jmsModuleName     = 'jmsModule'",
+                      "cfName            = 'cf'",
+                      "cfJNDIName        = 'jms/cf'",
+                      "transacted        = 'false'",
+                      "timeout           = 'xxxx'"
+                      ],
+     require     => Wls::Wlstexec['createJmsSubDeploymentWLSforJmsModule2'];
+  }
+
+  wls::resourceadapter{
+   'JmsAdapter_hr':
+    wlHome               => $osWlHome,
+    fullJDKName          => $jdkWls11gJDK,
+    domain               => $wlsDomainName, 
+    adapterName          => 'JmsAdapter' ,
+    adapterPath          => "${osMdwHome}/Oracle_SOA1/soa/connectors/JmsAdapter.rar",
+    adapterPlanDir       => "${osMdwHome}/Oracle_SOA1/soa/connectors" ,
+    adapterPlan          => 'Plan_JMS.xml' ,
+    adapterEntry         => 'eis/JMS/cf',
+    adapterEntryProperty => 'ConnectionFactoryLocation',
+    adapterEntryValue    => 'jms/cf',
+    address              => $address,
+    port                 => $adminListenPort,
+#    wlsUser       => "weblogic",
+#    password      => hiera('weblogic_password_default'),
+    userConfigFile       => $userConfigFile,
+    userKeyFile          => $userKeyFile,
+    user                 => $user,
+    group                => $group,
+    downloadDir          => $downloadDir,
+    require              => Wls::Wlstexec['createJmsConnectionFactoryforJmsModule'];
+  }
+
+
+  # create jms error Queue for jms module 
+  wls::wlstexec { 
+  
+    'createJmsErrorQueueforJmsModule':
+     wlstype       => "jmsobject",
+     wlsObjectName => "ErrorQueue",
+     script        => 'createJmsQueueOrTopic.py',
+     params        => ["subDeploymentName = 'JmsServer'",
+                      "jmsModuleName     = 'jmsModule'",
+                      "jmsName           = 'ErrorQueue'",
+                      "jmsJNDIName       = 'jms/ErrorQueue'",
+                      "jmsType           = 'queue'",
+                      "distributed       = 'false'",
+                      "useRedirect       = 'false'",
+                      ],
+     require     => Wls::Resourceadapter['JmsAdapter_hr'];
+  #   require     => Wls::Wlstexec['createJmsConnectionFactoryforJmsModule'];
+  }
+
+  # create jms Queue for jms module 
+  wls::wlstexec { 
+    'createJmsQueueforJmsModule':
+     wlstype       => "jmsobject",
+     wlsObjectName => "Queue1",
+     script        => 'createJmsQueueOrTopic.py',
+     params        => ["subDeploymentName   = 'JmsServer'",
+                      "jmsModuleName       = 'jmsModule'",
+                      "jmsName             = 'Queue1'",
+                      "jmsJNDIName         = 'jms/Queue1'",
+                      "jmsType             = 'queue'",
+                      "distributed         = 'false'",
+                      "useRedirect         = 'true'",
+                      "limit               = 3",
+                      "deliveryDelay       = 2000",
+                      "timeToLive          = 300000",
+                      "policy              = 'Redirect'",
+                      "errorObject         = 'ErrorQueue'"
+                      ],
+     require     => Wls::Wlstexec['createJmsErrorQueueforJmsModule'];
+  }
+
+  # create jms Topic for jms module 
+  wls::wlstexec { 
+    'createJmsTopicforJmsModule':
+     wlstype       => "jmsobject",
+     wlsObjectName => "Topic1",
+     script        => 'createJmsQueueOrTopic.py',
+     params        => ["subDeploymentName   = 'JmsServer'",
+                      "jmsModuleName       = 'jmsModule'",
+                      "jmsName             = 'Topic1'",
+                      "jmsJNDIName         = 'jms/Topic1'",
+                      "jmsType             = 'topic'",
+                      "distributed         = 'false'",
+                      ],
+     require     => Wls::Wlstexec['createJmsQueueforJmsModule'];
+  }
+
+  # create jms Queue for jms module 
+  wls::wlstexec { 
+    'createJmsQueue2forJmsModule':
+     wlstype       => "jmsobject",
+     wlsObjectName => "Queue2",
+     script        => 'createJmsQueueOrTopic.py',
+     params        => ["subDeploymentName   = 'JmsServer'",
+                      "jmsModuleName       = 'jmsModule'",
+                      "jmsName             = 'Queue2'",
+                      "jmsJNDIName         = 'jms/Queue2'",
+                      "jmsType             = 'queue'",
+                      "distributed         = 'false'",
+                      "useLogRedirect      = 'true'",
+                      "loggingPolicy       = '%header%,%properties%'",
+                      "limit               = 3",
+                      "deliveryDelay       = 2000",
+                      "timeToLive          = 300000",
+                      ],
+     require     => Wls::Wlstexec['createJmsTopicforJmsModule'];
+  }
+
+  # create jms Queue for jms module 
+  wls::wlstexec { 
+    'createJmsQueue3forJmsModule':
+     wlstype       => "jmsobject",
+     wlsObjectName => "Queue3",
+     script        => 'createJmsQueueOrTopic.py',
+     params        => ["subDeploymentName   = 'JmsServer'",
+                      "jmsModuleName       = 'jmsModule'",
+                      "jmsName             = 'Queue3'",
+                      "jmsJNDIName         = 'jms/Queue3'",
+                      "jmsType             = 'queue'",
+                      "distributed         = 'false'",
+                      "timeToLive          = 300000",
+                      ],
+     require     => Wls::Wlstexec['createJmsQueue2forJmsModule'];
+  }
 
 }
 
